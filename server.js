@@ -1,5 +1,5 @@
 const express = require('express');
-const session = require('express-session');
+const cookieSession = require('cookie-session'); // Swapped to cloud-safe sessions
 const path = require('path');
 const bcrypt = require('bcryptjs'); 
 const multer = require('multer'); 
@@ -10,20 +10,16 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CLOUDINARY CONFIG - Pulls from Vercel Settings
+// CLOUDINARY CONFIG
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'ddjavs1ty',
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// PROFESSIONAL CLOUD STORAGE SETUP
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: 'sngce_ctf_assets',
-    resource_type: 'auto' 
-  },
+  params: { folder: 'sngce_ctf_assets', resource_type: 'auto' },
 });
 const upload = multer({ storage: storage });
 
@@ -36,7 +32,13 @@ app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(session({ secret: 'ctf_secret', resave: false, saveUninitialized: false }));
+
+// CLOUD-SAFE SESSION CONFIGURATION (Fixes the random logouts/Unauthorized errors)
+app.use(cookieSession({
+    name: 'ctf_session',
+    keys: ['sngce_super_secret_ctf_key_2026'],
+    maxAge: 24 * 60 * 60 * 1000 // Logins stay active for 24 hours
+}));
 
 const requireLogin = (req, res, next) => { if (req.session.userId) next(); else res.redirect('/login'); };
 const requireAdmin = (req, res, next) => { if (req.session.role === 'admin') next(); else res.send('Unauthorized'); };
@@ -89,7 +91,8 @@ app.post('/login', async (req, res) => {
 
 app.get('/logout', async (req, res) => {
     if(req.session.userId) await db.execute({sql: "UPDATE users SET last_active = 0 WHERE id = ?", args: [req.session.userId]});
-    req.session.destroy(); res.redirect('/');
+    req.session = null; // Changed to match cookie-session format
+    res.redirect('/');
 });
 
 app.get('/arena', requireLogin, async (req, res) => {
