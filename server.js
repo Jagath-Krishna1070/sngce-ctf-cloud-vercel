@@ -27,7 +27,6 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-// Database connection for Turso Cloud
 const db = createClient({
     url: process.env.TURSO_DATABASE_URL,
     authToken: process.env.TURSO_AUTH_TOKEN,
@@ -57,7 +56,7 @@ app.get('/', async (req, res) => {
     try {
         const conf = await db.execute("SELECT * FROM config WHERE id = 1");
         const content = await db.execute("SELECT * FROM home_content ORDER BY created_at DESC");
-        const scores = await db.execute("SELECT u.username, s.total_points FROM users u JOIN scores s ON u.id = s.user_id WHERE u.role != 'admin' ORDER BY s.total_points DESC");
+        const scores = await db.execute("SELECT u.username, s.total_points FROM users u JOIN scores s ON u.id = s.user_id WHERE LOWER(u.role) != 'admin' ORDER BY s.total_points DESC");
         res.render('home', { scoreboard: scores.rows || [], content: content.rows || [], compStarted: conf.rows[0]?.comp_started || 0, scoreboardVisible: conf.rows[0]?.scoreboard_visible || 1 });
     } catch (err) { res.status(500).send(err.message); }
 });
@@ -101,7 +100,7 @@ app.get('/arena', requireLogin, async (req, res) => {
         const solvedList = await db.execute({sql: "SELECT * FROM solved WHERE user_id = ?", args: [req.session.userId]});
         const starts = await db.execute({sql: "SELECT * FROM level_starts WHERE user_id = ?", args: [req.session.userId]});
         const myScore = await db.execute({sql: "SELECT * FROM scores WHERE user_id = ?", args: [req.session.userId]});
-        const globalScores = await db.execute("SELECT u.username, s.total_points FROM users u JOIN scores s ON u.id = s.user_id WHERE u.role != 'admin' ORDER BY s.total_points DESC");
+        const globalScores = await db.execute("SELECT u.username, s.total_points FROM users u JOIN scores s ON u.id = s.user_id WHERE LOWER(u.role) != 'admin' ORDER BY s.total_points DESC");
         const solvedIds = solvedList.rows.map(s => s.question_id);
         res.render('arena', { 
             username: req.session.username, compStarted: conf.rows[0]?.comp_started || 0, scoreboardVisible: conf.rows[0]?.scoreboard_visible || 1,
@@ -122,17 +121,17 @@ app.get('/admin', requireAdmin, async (req, res) => {
 });
 
 app.post('/admin/start-comp', requireAdmin, async (req, res) => { 
-    await db.execute({sql: "UPDATE config SET comp_started = 1, start_time = ? WHERE id = 1", args: [new Date().toISOString()]});
+    await db.execute({sql: "INSERT INTO config (id, comp_started, scoreboard_visible) VALUES (1, 1, 1) ON CONFLICT(id) DO UPDATE SET comp_started = 1, start_time = ?", args: [new Date().toISOString()]});
     res.redirect('/admin'); 
 });
 
 app.post('/admin/stop-comp', requireAdmin, async (req, res) => { 
-    await db.execute("UPDATE config SET comp_started = 0 WHERE id = 1");
+    await db.execute("INSERT INTO config (id, comp_started, scoreboard_visible) VALUES (1, 0, 1) ON CONFLICT(id) DO UPDATE SET comp_started = 0");
     res.redirect('/admin'); 
 });
 
 app.post('/admin/toggle-scoreboard', requireAdmin, async (req, res) => { 
-    await db.execute("UPDATE config SET scoreboard_visible = CASE WHEN scoreboard_visible = 1 THEN 0 ELSE 1 END WHERE id = 1");
+    await db.execute("INSERT INTO config (id, comp_started, scoreboard_visible) VALUES (1, 0, 0) ON CONFLICT(id) DO UPDATE SET scoreboard_visible = CASE WHEN scoreboard_visible = 1 THEN 0 ELSE 1 END");
     res.redirect('/admin'); 
 });
 
@@ -141,7 +140,6 @@ app.post('/admin/reset-comp', requireAdmin, async (req, res) => {
     res.redirect('/admin');
 });
 
-// CLOUD UPLOAD FOR QUESTIONS
 app.post('/admin/add-question', requireAdmin, upload.single('challenge_file'), async (req, res) => {
     const { level, topic, question_text, flag, base_points } = req.body;
     const fileUrl = req.file ? req.file.path : null;
@@ -151,7 +149,6 @@ app.post('/admin/add-question', requireAdmin, upload.single('challenge_file'), a
     } catch (err) { res.status(500).send(err.message); }
 });
 
-// CLOUD UPLOAD FOR HOME CONTENT
 app.post('/admin/add-home-content', requireAdmin, upload.single('content_image'), async (req, res) => {
     const { title, description, text_position } = req.body;
     const imageUrl = req.file ? req.file.path : null;
@@ -167,7 +164,7 @@ app.post('/admin/delete-all-questions', requireAdmin, async (req, res) => { awai
 app.post('/admin/delete-user', requireAdmin, async (req, res) => { await db.batch([{sql: "DELETE FROM solved WHERE user_id = ?", args: [req.body.user_id]}, {sql: "DELETE FROM scores WHERE user_id = ?", args: [req.body.user_id]}, {sql: "DELETE FROM users WHERE id = ?", args: [req.body.user_id]}], "write"); res.redirect('/admin'); });
 
 app.get('/admin/download-report', requireAdmin, async (req, res) => {
-    const users = await db.execute("SELECT u.username, s.total_points, u.id FROM users u JOIN scores s ON u.id = s.user_id WHERE u.role != 'admin' ORDER BY s.total_points DESC");
+    const users = await db.execute("SELECT u.username, s.total_points, u.id FROM users u JOIN scores s ON u.id = s.user_id WHERE LOWER(u.role) != 'admin' ORDER BY s.total_points DESC");
     let csv = "Rank,Player Name,Total Score,Easy Level Start Time,Medium Level Start Time,Hard Level Start Time,Solved Challenges & Points\n";
     for (let i = 0; i < users.rows.length; i++) {
         const u = users.rows[i];
