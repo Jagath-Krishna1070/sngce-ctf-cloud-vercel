@@ -10,7 +10,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CLOUDINARY CONFIG - Pulls keys from Vercel Environment Variables
+// CLOUDINARY CONFIG - Pulls from Vercel Settings
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'ddjavs1ty',
   api_key: process.env.CLOUDINARY_API_KEY,
