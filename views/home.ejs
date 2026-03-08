@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home | SNG COLLEGE CTF</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #9d33ff; --bg: #0d0216; --card-bg: #1e0b36; }
+        body { font-family: 'Segoe UI', sans-serif; background: radial-gradient(circle at top right, #2a0a4d 0%, #0d0216 100%); color: #e0e0e0; margin: 0; min-height: 100vh; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 50px; background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(157, 51, 255, 0.2); }
+        .logo { font-size: 1.5em; font-weight: bold; color: white; text-decoration: none; }
+        
+        .hero { text-align: center; padding: 80px 20px; }
+        .hero h1 { font-size: 3.5em; color: var(--primary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 2px; }
+        .hero p { font-size: 1.2em; opacity: 0.8; max-width: 600px; margin: 0 auto 30px; }
+        .btn { background: var(--primary); color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 1.1em; transition: 0.3s; display: inline-block; }
+        .btn:hover { box-shadow: 0 0 20px rgba(157, 51, 255, 0.6); }
+
+        .dashboard-btn { background: #58a6ff; color: #0d0216; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 1.1em; transition: 0.3s; display: inline-block; cursor: pointer; border: none; margin-left: 15px; }
+
+        .broadcast-container { max-width: 900px; margin: 0 auto 80px; padding: 0 20px; }
+        .broadcast-card { background: var(--card-bg); border-radius: 15px; padding: 30px; margin-bottom: 30px; border: 1px solid rgba(157, 51, 255, 0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .broadcast-card h2 { color: var(--primary); margin-top: 0; }
+        .broadcast-card img { max-width: 100%; border-radius: 10px; margin: 15px 0; }
+        
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; }
+        .modal-content { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:#1e0b36; width:500px; padding:35px; border-radius: 20px; border: 1px solid var(--primary); max-height: 80vh; overflow-y: auto; }
+        .score-row { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .score-row:first-child { font-weight: bold; color: var(--primary); font-size: 1.2em; border-bottom: 2px solid var(--primary); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo"><i class="fas fa-shield-alt"></i> SNG COLLEGE CTF</a>
+        <div style="display: flex; gap: 20px;">
+            <a href="/login" style="color: white; text-decoration: none; font-weight: bold;">Login</a>
+            <a href="/register" style="color: var(--primary); text-decoration: none; font-weight: bold;">Register</a>
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h1>Capture The Flag</h1>
+        <p>Infiltrate the network, solve the challenges, and capture the flags to prove your skills.</p>
+        <div style="display: flex; justify-content: center; align-items: center;">
+            <a href="/arena" class="btn"><i class="fas fa-terminal"></i> Enter Arena</a>
+            <% if (scoreboardVisible) { %>
+                <button class="dashboard-btn" onclick="openScoreboard()"><i class="fas fa-trophy"></i> Global Dashboard</button>
+            <% } %>
+        </div>
+        <% if (!compStarted) { %>
+            <p style="color: #ff4d4d; margin-top: 20px; font-weight: bold;"><i class="fas fa-lock"></i> The Arena is currently in Standby Mode.</p>
+        <% } %>
+    </div>
+
+    <div class="broadcast-container">
+        <% if (content.length > 0) { %>
+            <h2 style="text-align: center; margin-bottom: 30px; opacity: 0.5;">LATEST BROADCASTS</h2>
+            <% content.forEach(c => { %>
+                <div class="broadcast-card">
+                    <h2><%= c.title %></h2>
+                    <% if (c.text_position === 'before') { %><p style="line-height: 1.6; opacity: 0.9;"><%= c.description %></p><% } %>
+                    <% if (c.image_url) { %><img src="<%= c.image_url %>" alt="Broadcast Image"><% } %>
+                    <% if (c.text_position === 'after') { %><p style="line-height: 1.6; opacity: 0.9;"><%= c.description %></p><% } %>
+                </div>
+            <% }) %>
+        <% } %>
+    </div>
+
+    <div id="score-modal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin:0;"><i class="fas fa-trophy" style="color: gold;"></i> Global Dashboard</h2>
+                <button onclick="closeScoreboard()" style="background: none; border: none; color: white; font-size: 1.5em; cursor: pointer; opacity: 0.7;">&times;</button>
+            </div>
+            <div class="score-row"><span>Rank & Hacker</span><span>Points</span></div>
+            <% if (scoreboard && scoreboard.length > 0) { %>
+                <% scoreboard.forEach((s, index) => { %>
+                    <div class="score-row">
+                        <span><strong>#<%= index + 1 %></strong> &nbsp; <%= s.username %></span>
+                        <span style="color: var(--primary); font-weight: bold;"><%= s.total_points %> pts</span>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <div style="text-align: center; padding: 20px; opacity: 0.5;">No active scores yet.</div>
+            <% } %>
+            <button onclick="closeScoreboard()" style="width:100%; background:rgba(255,255,255,0.05); color:white; padding:15px; border:1px solid rgba(255,255,255,0.1); border-radius:8px; margin-top:20px; font-weight:bold; cursor:pointer;">CLOSE DASHBOARD</button>
+        </div>
+    </div>
+
+    <script>
+        function openScoreboard() { document.getElementById('score-modal').style.display = 'block'; }
+        function closeScoreboard() { document.getElementById('score-modal').style.display = 'none'; }
+    </script>
+</body>
+</html>

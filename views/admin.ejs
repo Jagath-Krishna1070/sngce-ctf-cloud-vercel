@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Command | CTF Terminal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary: #9d33ff; --bg: #0d0216; --card-bg: rgba(30, 11, 54, 0.7); }
+        body { font-family: 'Segoe UI', sans-serif; background: radial-gradient(circle at top right, #2a0a4d 0%, #0d0216 100%); color: #e0e0e0; margin: 0; padding-bottom: 50px; min-height: 100vh; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 60px; background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(157, 51, 255, 0.2); }
+        .logo { font-size: 1.5em; font-weight: bold; color: white; text-decoration: none; }
+        .nav-links a { color: white; text-decoration: none; margin-left: 25px; font-weight: 600; font-size: 0.9em; transition: 0.3s; }
+        .logout-btn { color: #ff4d4d !important; }
+
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        .panel { background: var(--card-bg); padding: 30px; border: 1px solid rgba(157, 51, 255, 0.1); border-radius: 20px; border-top: 4px solid var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: white; box-sizing: border-box; }
+        button { background: var(--primary); color: white; padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; }
+        .btn-stop { background: #da3633; }
+        .btn-start { background: #238636; }
+        .btn-reset { background: #ff7b72; color: white; }
+        .btn-toggle { background: #8a2be2; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: left; }
+        .tag { background: rgba(157, 51, 255, 0.2); color: var(--primary); padding: 4px 10px; border-radius: 5px; font-size: 0.8em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo"><i class="fas fa-user-shield"></i> ADMIN TERMINAL</a>
+        <div class="nav-links">
+            <a href="/arena"><i class="fas fa-terminal"></i> Arena</a>
+            <a href="/logout" class="logout-btn"><i class="fas fa-power-off"></i> Logout</a>
+        </div>
+    </nav>
+
+    <div class="panel" style="max-width: 1140px; margin: 40px auto; text-align: center;">
+        <h2>COMPETITION MASTER CONTROL</h2>
+        <div style="display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap: wrap;">
+            <% if (!compStarted) { %>
+                <form action="/admin/start-comp" method="POST" style="width: auto;"><button type="submit" class="btn-start" style="padding: 15px 30px;">START COMPETITION</button></form>
+            <% } else { %>
+                <form action="/admin/stop-comp" method="POST" style="width: auto;"><button type="submit" class="btn-stop" style="padding: 15px 30px;">STOP COMPETITION</button></form>
+            <% } %>
+            
+            <form action="/admin/reset-comp" method="POST" onsubmit="return confirm('WARNING: This will wipe ALL player scores, solved challenges, and timers back to 0. Logins and questions will NOT be deleted. Proceed?');" style="width: auto;">
+                <button type="submit" class="btn-reset" style="padding: 15px 30px;"><i class="fas fa-undo"></i> RESET PROGRESS</button>
+            </form>
+
+            <form action="/admin/toggle-scoreboard" method="POST" style="width: auto;">
+                <button type="submit" class="<%= scoreboardVisible ? 'btn-stop' : 'btn-start' %>" style="padding: 15px 30px;"><i class="fas fa-eye<%= scoreboardVisible ? '-slash' : '' %>"></i> <%= scoreboardVisible ? 'HIDE SCOREBOARD' : 'SHOW SCOREBOARD' %></button>
+            </form>
+            
+            <a href="/admin/download-report" style="text-decoration: none;"><button type="button" style="background: #58a6ff; padding: 15px 30px;"><i class="fas fa-file-csv"></i> DOWNLOAD CSV REPORT</button></a>
+        </div>
+        <p style="opacity: 0.5;">System Status: <%= compStarted ? '🔴 LIVE' : '⚪ STANDBY' %> | Scoreboard: <%= scoreboardVisible ? '🟢 VISIBLE TO PLAYERS' : '🛑 HIDDEN' %></p>
+    </div>
+
+    <div class="admin-grid">
+        <div class="panel">
+            <h3><i class="fas fa-plus-circle"></i> Deploy Challenge</h3>
+            <form action="/admin/add-question" method="POST" enctype="multipart/form-data">
+                <input type="text" name="topic" placeholder="Category (e.g. Forensics)" required>
+                <select name="level"><option value="easy">Level 1 (Easy)</option><option value="intermediate">Level 2 (Medium)</option><option value="hard">Level 3 (Hard)</option></select>
+                <textarea name="question_text" placeholder="Challenge Description..." rows="4" required></textarea>
+                <input type="text" name="flag" placeholder="Flag CTF{...}" required>
+                <input type="number" name="base_points" placeholder="Points" required>
+                <input type="file" name="challenge_file">
+                <button type="submit">UPLOAD INTEL</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h3><i class="fas fa-broadcast-tower"></i> Home Broadcast</h3>
+            <form action="/admin/add-home-content" method="POST" enctype="multipart/form-data">
+                <input type="text" name="title" placeholder="Title" required>
+                <textarea name="description" placeholder="Broadcast message..." rows="4" required></textarea>
+                <select name="text_position"><option value="after">Text After Image</option><option value="before">Text Before Image</option></select>
+                <input type="file" name="content_image">
+                <button type="submit" style="background: #238636;">PUBLISH TO HUB</button>
+            </form>
+        </div>
+
+        <div class="panel" style="grid-column: 1 / -1; border-top-color: #ffb86c;">
+            <h3><i class="fas fa-users-cog"></i> Manage Active Logins</h3>
+            <table>
+                <tr><th>Team/User</th><th>Email Address</th><th>Status</th><th>Action</th></tr>
+                <% users.forEach(u => { if(u.role !== 'admin'){ %>
+                    <tr>
+                        <td><strong><%= u.username %></strong></td>
+                        <td><%= u.email %></td>
+                        <td><%= (currentTime - u.last_active < 12000) ? '🟢 Online' : '⚪ Offline' %></td>
+                        <td>
+                            <form action="/admin/delete-user" method="POST" onsubmit="return confirm('Purge this user and their scores?');">
+                                <input type="hidden" name="user_id" value="<%= u.id %>">
+                                <button type="submit" class="btn-stop" style="padding: 5px 15px; width: auto;">Purge Account</button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }}) %>
+            </table>
+        </div>
+
+        <div class="panel" style="grid-column: 1 / -1; border-top-color: #58a6ff;">
+            <h3><i class="fas fa-bullhorn"></i> Manage Home Broadcasts</h3>
+            <table>
+                <tr><th>Title</th><th>Preview</th><th>Action</th></tr>
+                <% if (homeContent && homeContent.length > 0) { %>
+                    <% homeContent.forEach(c => { %>
+                        <tr>
+                            <td><strong><%= c.title %></strong></td>
+                            <td style="opacity: 0.8;"><%= c.description.substring(0, 60) %>...</td>
+                            <td>
+                                <form action="/admin/delete-home-content" method="POST" onsubmit="return confirm('Remove this broadcast?');">
+                                    <input type="hidden" name="content_id" value="<%= c.id %>">
+                                    <button type="submit" class="btn-stop" style="padding: 5px 15px; width: auto;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr><td colspan="3" style="text-align: center; opacity: 0.5;">No active broadcasts</td></tr>
+                <% } %>
+            </table>
+        </div>
+
+        <div class="panel" style="grid-column: 1 / -1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;"><i class="fas fa-tasks"></i> Challenge Registry</h3>
+                <% if (questions && questions.length > 0) { %>
+                    <form action="/admin/delete-all-questions" method="POST" onsubmit="return confirm('DANGER: This will permanently delete ALL challenges from the database. Are you absolutely sure?');" style="margin: 0;">
+                        <button type="submit" class="btn-stop" style="padding: 8px 20px; width: auto; font-size: 0.9em;"><i class="fas fa-trash-alt"></i> Delete All Challenges</button>
+                    </form>
+                <% } %>
+            </div>
+            <table>
+                <tr><th>Topic</th><th>Tier</th><th>Flag</th><th>File Attached</th><th>Action</th></tr>
+                <% questions.forEach(q => { %>
+                    <tr>
+                        <td><span class="tag"><%= q.topic %></span></td>
+                        <td><%= q.level.toUpperCase() %></td>
+                        <td style="font-family: monospace; color: var(--primary);"><%= q.flag %></td>
+                        <td style="opacity: 0.7;"><%= q.file_url ? 'Yes' : 'No' %></td>
+                        <td>
+                            <form action="/admin/delete-question" method="POST" onsubmit="return confirm('Delete challenge?');">
+                                <input type="hidden" name="q_id" value="<%= q.id %>">
+                                <button type="submit" class="btn-stop" style="padding: 5px 15px; width: auto;">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }) %>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
