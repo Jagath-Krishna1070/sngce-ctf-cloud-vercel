@@ -10,11 +10,11 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CLOUDINARY CONFIG - Your keys from the dashboard
+// CLOUDINARY CONFIG - Pulls keys from Vercel Environment Variables
 cloudinary.config({
-  cloud_name: 'ddjavs1ty', 
-  api_key: '722467556822223',
-  api_secret: 'oasC3CxaHzdgf-7t4Dj_uZHVoxQ'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'ddjavs1ty',
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // PROFESSIONAL CLOUD STORAGE SETUP
